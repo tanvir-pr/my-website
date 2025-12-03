@@ -1,5 +1,5 @@
 const BackgroundEffect = () => (
-  <div className="absolute inset-0 overflow-hidden">
+  <div className="fixed inset-0 overflow-hidden w-full h-full">
     {/* First gradient layer */}
     <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-blue-700/60 blur-3xl animate-pulse" />
 

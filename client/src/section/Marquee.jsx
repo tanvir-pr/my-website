@@ -3,49 +3,29 @@ import { skills } from "../section/db";
 import FlipDiv from "../section/FlipDiv";
 
 const Marquee = () => {
-  const oneThirdLength = Math.floor(skills.length / 3)
-  const oneHalfLength = Math.ceil(skills.length / 2)
-
   return (
-    <div className="mx-auto space-y-6">
-      <div className="flex overflow-hidden x-gradient">
+    <div className="mx-auto space-y-6 w-full max-w-full overflow-hidden mt-8">
+      <div className="flex overflow-hidden x-gradient w-full pl-12 md:pl-24">
         <motion.div
           initial={{ x: 0 }}
           animate={{ x: "-100%" }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="flex flex-shrink-0 *:mr-6"
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          className="flex flex-shrink-0 gap-6"
         >
-          {skills
-            .slice(0, oneThirdLength)
-            .map(({ id, skill, icon }, i) => (
-              // <div
-              //   key={`un-${i}`}
-              //   className="rounded-lg bg-neutral-300/10 px-6 py-4 text-lg mr-6"
-              // >
-              //   Skill
-              // </div>
-
-              <FlipDiv key={id} text={skill} under={icon} className={"mr-6"} />
-            ))}
+          {skills.map(({ id, skill, icon }) => (
+            <FlipDiv key={`first-${id}`} text={skill} under={icon} className={"min-w-fit"} />
+          ))}
         </motion.div>
 
         <motion.div
           initial={{ x: 0 }}
           animate={{ x: "-100%" }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="flex flex-shrink-0 *:mr-6"
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          className="flex flex-shrink-0 gap-6 ml-6"
         >
-          {skills
-            .slice(0, oneThirdLength)
-            .map(({ id, skill, icon }, i) => (
-              // <div
-              //   key={`un-${i}`}
-              //   className="mr-6 rounded-lg bg-red-300/10 px-6 py-4 text-lg"
-              // >
-              //   Skill
-              // </div>
-              <FlipDiv key={id} text={skill} under={icon} className={"mr-6"} />
-            ))}
+          {skills.map(({ id, skill, icon }) => (
+            <FlipDiv key={`second-${id}`} text={skill} under={icon} className={"min-w-fit"} />
+          ))}
         </motion.div>
       </div>
 

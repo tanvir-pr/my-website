@@ -1,0 +1,7 @@
+RESUME DOWNLOAD
+===============
+Place your resume PDF file here and name it: resume.pdf
+
+The Resume / Download CV buttons will then trigger a download of your resume.
+
+Supported: resume.pdf (or update src/utils/resume.js to use a different filename)

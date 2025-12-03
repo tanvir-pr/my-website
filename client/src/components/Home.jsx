@@ -2,16 +2,13 @@ import { useCallback } from "react";
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles"; 
 import { loadSlim } from "tsparticles-slim";
-// import ParticlesBackground from "../section/ParticlesBackground";
-
+import { useTheme } from "../context/ThemeContext";
 
 const Home = () => {
+  const { backgroundEffect } = useTheme();
+  
   const particlesInit = useCallback(async engine => {
     console.log(engine);
-    // you can initiate the tsParticles instance (engine) here, adding custom shapes or presets
-    // this loads the tsparticles package bundle, it's the easiest method for getting everything ready
-    // starting from v2 you can add only the features you need reducing the bundle size
-    //await loadFull(engine);
     await loadSlim(engine);
 }, []); 
 
@@ -19,9 +16,12 @@ const particlesLoaded = useCallback(async container => {
     await console.log(container);
 }, []);
 
+  if (!backgroundEffect) {
+    return null;
+  }
+
   return (
     <div>
-      {/* <ParticlesBackground></ParticlesBackground> */}
         <Particles
             // id="tsparticles"
               init={particlesInit}
@@ -73,18 +73,18 @@ const particlesLoaded = useCallback(async container => {
                               default: "bounce",
                           },
                           random: false,
-                          speed: 6,
+                          speed: 1.2,
                           straight: false,
                       },
                       number: {
                           density: {
                               enable: true,
-                              area: 800,
+                              area: 900,
                           },
-                          value: 80,
+                          value: 36,
                       },
                       opacity: {
-                          value: 0.3,
+                          value: 0.18,
                       },
                       shape: {
                           type: "circle",

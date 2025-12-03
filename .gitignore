@@ -1,0 +1,12 @@
+.vercel
+.env
+.env.*
+!.env.example
+.env*.local
+**/node_modules/
+server/uploads/*
+!server/uploads/.gitkeep
+server/.env
+client/.env
+TanvirHasanweb.pdf
+*.log

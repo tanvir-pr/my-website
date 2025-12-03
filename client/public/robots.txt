@@ -1,0 +1,6 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Sitemap (update URL when deployed)
+Sitemap: https://tanvirhasan.com/sitemap.xml

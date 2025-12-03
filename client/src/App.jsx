@@ -1,49 +1,39 @@
-import { useState } from 'react'
-import { Outlet } from "react-router-dom";
 import AboutMe from "./components/AboutMe";
+import Analytics from "./components/Analytics";
 import BackgroundEffect from "./components/BackgroundEffect";
+import SEO from "./components/SEO";
 import Contact from "./components/Contact";
-import Experience from "./components/Experience";
 import Footer from "./components/Footer";
 import Hero from "./components/Hero";
 import Navbar from "./components/Navbar";
 import Portfolio from "./components/Portfolio";
-import Projects from "./components/Projects";
 import Skills from "./components/Skills";
-import Home from "./components/Home";
-import './App.css'
-
+import Certificates from "./components/Certificates";
+import { useTheme } from "./context/ThemeContext";
+import "./App.css";
 
 export default function App() {
-  
+  const { theme, backgroundEffect } = useTheme();
 
   return (
-  
-        
-    
-     
-      <div className="relative mx-auto border-l-green-500 border-2"> 
-      <BackgroundEffect></BackgroundEffect>
-      
+    <div
+      className={`page-atmosphere relative mx-auto min-h-screen w-full max-w-full overflow-x-hidden transition-colors duration-300 ${
+        theme === "dark" ? "bg-[#0b0d14] text-gray-100" : "bg-[#f4f5f8] text-gray-900"
+      }`}
+    >
+      {backgroundEffect && <BackgroundEffect />}
+      <SEO />
+      <Analytics />
       <div className="relative z-10 w-full">
         <Navbar />
-          {/* <Home></Home> */}
-          
-          {/* <ParticlesBackground></ParticlesBackground> */}
         <Hero />
-        <AboutMe></AboutMe>
-        {/* <Projects></Projects> */}
-      <Skills/>
-      <Portfolio/>
-      <Experience/>
-      <Contact/>
-      <Footer/>
+        <Portfolio />
+        <Skills />
+        <Certificates />
+        <AboutMe />
+        <Contact />
+        <Footer />
       </div>
-    
     </div>
- 
-   
-  )
+  );
 }
-
-// export default App

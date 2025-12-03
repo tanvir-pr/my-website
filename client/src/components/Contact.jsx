@@ -1,168 +1,355 @@
-import React from "react";
-import { motion } from "framer-motion";
-import { FaLinkedin, FaInstagram, FaYoutube, FaGithub, FaTiktok } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaLinkedin, FaGithub } from "react-icons/fa";
+import { AiOutlineMail, AiOutlinePhone } from "react-icons/ai";
+import { IoCheckmarkCircle, IoCloseCircle, IoAlertCircle } from "react-icons/io5";
+import { useTheme } from "../context/ThemeContext";
+import { API_BASE, site } from "../data/site";
+
+const validateName = (value) => {
+  const trimmed = value.trim();
+  if (!trimmed) return { valid: false, message: "Name is required" };
+  if (trimmed.length < 2) return { valid: false, message: "Name must be at least 2 characters" };
+  if (trimmed.length > 50) return { valid: false, message: "Name must be under 50 characters" };
+  return { valid: true, message: "" };
+};
+
+const validateEmail = (value) => {
+  const trimmed = value.trim();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!trimmed) return { valid: false, message: "Email is required" };
+  if (!emailRegex.test(trimmed)) return { valid: false, message: "Please enter a valid email" };
+  return { valid: true, message: "" };
+};
+
+const validateMessage = (value) => {
+  const trimmed = value.trim();
+  if (!trimmed) return { valid: false, message: "Message is required" };
+  if (trimmed.length < 10) return { valid: false, message: "Message must be at least 10 characters" };
+  if (trimmed.length > 1000) return { valid: false, message: "Message must be under 1000 characters" };
+  return { valid: true, message: "" };
+};
+
+const AnimatedInput = ({
+  type,
+  placeholder,
+  value,
+  onChange,
+  onBlur,
+  error,
+  touched,
+  theme,
+  as: Component = "input",
+  rows,
+  name,
+  shakeKey = 0,
+}) => {
+  const showError = touched && error;
+  const isValid = touched && !error && value.trim();
+  const isTextarea = Component === "textarea";
+  const isDark = theme === "dark";
+
+  return (
+    <motion.div layout className="relative">
+      <motion.div
+        key={shakeKey}
+        animate={{ x: showError ? [0, -8, 8, -4, 4, 0] : 0 }}
+        transition={{ duration: 0.45 }}
+      >
+        <Component
+          {...(isTextarea ? {} : { type })}
+          name={name}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          {...(isTextarea && { rows })}
+          className={`w-full p-3 rounded-xl transition-all duration-300 outline-none pr-12 ${
+            isDark
+              ? "bg-[#0d0f18] text-white placeholder-gray-500"
+              : "bg-gray-50 text-gray-900 placeholder-gray-400"
+          } ${
+            showError
+              ? "border-2 border-red-500"
+              : isValid
+                ? "border-2 border-emerald-500"
+                : "border border-[var(--border-color)] focus:border-[var(--accent-color)]"
+          }`}
+        />
+        <AnimatePresence>
+          {touched && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className={`absolute right-3 pointer-events-none ${isTextarea ? "top-3" : "top-1/2 -translate-y-1/2"}`}
+            >
+              {showError ? (
+                <IoCloseCircle size={22} className="text-red-500" />
+              ) : isValid ? (
+                <IoCheckmarkCircle size={22} className="text-emerald-500" />
+              ) : null}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+      <AnimatePresence>
+        {showError && (
+          <motion.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-2 mt-2 text-red-400 text-sm"
+          >
+            <IoAlertCircle size={16} />
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
+const SuccessResetEffect = ({ onReset }) => {
+  useEffect(() => {
+    const timer = setTimeout(onReset, 3000);
+    return () => clearTimeout(timer);
+  }, [onReset]);
+  return null;
+};
 
 const Contact = () => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
+  const [touched, setTouched] = useState({ name: false, email: false, message: false });
+  const [errors, setErrors] = useState({ name: "", email: "", message: "" });
+  const [submitStatus, setSubmitStatus] = useState("idle");
+  const [submitAttempts, setSubmitAttempts] = useState(0);
+  const [apiError, setApiError] = useState("");
+
+  const validateField = (name, value) => {
+    switch (name) {
+      case "name":
+        return validateName(value);
+      case "email":
+        return validateEmail(value);
+      case "message":
+        return validateMessage(value);
+      default:
+        return { valid: true, message: "" };
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (touched[name]) {
+      const result = validateField(name, value);
+      setErrors((prev) => ({ ...prev, [name]: result.message }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const result = validateField(name, value);
+    setErrors((prev) => ({ ...prev, [name]: result.message }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setTouched({ name: true, email: true, message: true });
+    setApiError("");
+
+    const nameResult = validateName(formData.name);
+    const emailResult = validateEmail(formData.email);
+    const messageResult = validateMessage(formData.message);
+    setErrors({
+      name: nameResult.message,
+      email: emailResult.message,
+      message: messageResult.message,
+    });
+
+    if (!nameResult.valid || !emailResult.valid || !messageResult.valid) {
+      setSubmitAttempts((c) => c + 1);
+      return;
+    }
+
+    setSubmitStatus("submitting");
+    try {
+      const res = await fetch(`${API_BASE}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Could not send message");
+      }
+      setSubmitStatus("success");
+      setFormData({ name: "", email: "", message: "" });
+      setTouched({ name: false, email: false, message: false });
+      setErrors({ name: "", email: "", message: "" });
+    } catch (err) {
+      setSubmitStatus("idle");
+      setApiError(err.message || "Could not send message");
+    }
+  };
+
+  const isFormValid =
+    validateName(formData.name).valid &&
+    validateEmail(formData.email).valid &&
+    validateMessage(formData.message).valid;
+
+  const links = [
+    {
+      icon: <AiOutlineMail className="text-xl" />,
+      label: "Email",
+      value: site.email,
+      href: `mailto:${site.email}`,
+    },
+    {
+      icon: <AiOutlinePhone className="text-xl" />,
+      label: "Phone",
+      value: site.phone,
+      href: site.phoneHref,
+    },
+    {
+      icon: <FaLinkedin className="text-xl" />,
+      label: "LinkedIn",
+      value: "Connect",
+      href: site.linkedin,
+    },
+    {
+      icon: <FaGithub className="text-xl" />,
+      label: "GitHub",
+      value: "@tanvir-pr",
+      href: site.github,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#0d0b1a] text-white py-16 px-6" id="contact">
-      <motion.h2 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center text-4xl font-bold text-purple-400"
-      >
-        Contact Me
-      </motion.h2>
-      <p className="text-center text-gray-400 mt-2">
-        Got a question? Send me a message, and I'll get back to you soon.
-      </p>
-
-      <div className="max-w-6xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Left Side - Contact Form */}
+    <section id="contact" className="relative w-full overflow-hidden">
+      <div className="section-shell">
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-[#16132a] p-6 rounded-2xl shadow-lg"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-left mb-10"
         >
-          <h3 className="text-2xl font-semibold">Get in Touch</h3>
-          <p className="text-gray-400 mt-2">
-            Have something to discuss? Send me a message and let's talk.
+          <p className="section-eyebrow">Contact</p>
+          <h2 className="section-title">Let’s talk</h2>
+          <p className="section-lead">
+            Hiring for AI/ML or full-stack? Send a note — I usually reply within a day.
           </p>
-          <form className="mt-6 space-y-4">
-            <input type="text" placeholder="Your Name" className="w-full p-3 rounded-lg bg-[#0d0b1a] text-white border border-gray-600 focus:border-purple-400" />
-            <input type="email" placeholder="Your Email" className="w-full p-3 rounded-lg bg-[#0d0b1a] text-white border border-gray-600 focus:border-purple-400" />
-            <textarea placeholder="Your Message" className="w-full p-3 h-28 rounded-lg bg-[#0d0b1a] text-white border border-gray-600 focus:border-purple-400"></textarea>
-            <button className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 py-3 rounded-lg text-white font-semibold hover:opacity-80 transition">
-              🚀 Send Message
-            </button>
-          </form>
+        </motion.div>
 
-          {/* ✅ UPDATED "Connect With Me" SECTION */}
-           {/* <motion.div 
+        <div className="grid md:grid-cols-[0.9fr_1.1fr] gap-6 md:gap-8 items-start">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="bg-gradient-to-b from-[#5068b8] to-[#8e3427] p-2 rounded-2xl mt-6 shadow-lg"
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="space-y-3"
           >
-            <h4 className="text-lg font-semibold text-white">Connect With Me</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              {[
-                { icon: <FaLinkedin className="text-blue-400 text-3xl" />, text: "Let's Connect", subtext: "on LinkedIn", link: "#" },
-                { icon: <FaInstagram className="text-pink-400 text-2xl" />, text: "Instagram", subtext: "@abnahid", link: "#" },
-                { icon: <FaYoutube className="text-red-500 text-2xl" />, text: "Youtube", subtext: "@abnahid", link: "#" },
-                { icon: <FaGithub className="text-gray-400 text-2xl" />, text: "Github", subtext: "@abnahid", link: "#" },
-                { icon: <FaTiktok className="text-white text-2xl" />, text: "Tiktok", subtext: "@abnahid", link: "#" }
-              ].map((item, index) => (
-                <motion.a
-                  key={index}
-                  href={item.link}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center bg-white/10 hover:bg-white/20 p-4 rounded-xl transition"
-                >
-                  <div className="p-3 bg-white/10 rounded-lg">{item.icon}</div>
-                  <div className="ml-3 text-white">
-                    <p className="font-semibold">{item.text}</p>
-                    <p className="text-gray-400 text-sm">{item.subtext}</p>
-                  </div>
-                </motion.a>
-              ))}
-            </div>
-          </motion.div>  */}
+            {links.map((item) => (
+              <a
+                key={item.label}
+                href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noreferrer" : undefined}
+                className="surface-card flex items-center gap-4 p-4 transition hover:border-[var(--accent-color)]"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-color)]">
+                  {item.icon}
+                </span>
+                <span className="text-left">
+                  <span className="block text-xs uppercase tracking-wider text-[var(--text-secondary)]">
+                    {item.label}
+                  </span>
+                  <span className={`block text-sm font-medium ${isDark ? "text-white" : "text-gray-900"}`}>
+                    {item.value}
+                  </span>
+                </span>
+              </a>
+            ))}
+          </motion.div>
 
-<motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-gradient-to-b from-[#44536b] to-[#393d5e] p-2 rounded-2xl mt-6 shadow-lg"
-    >
-      <h4 className="text-lg font-semibold text-white">Connect With Me</h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-        {[
-          { icon: <FaLinkedin className="text-blue-400 text-3xl" />, text: "Let's Connect", subtext: "on LinkedIn", link: "#", gradient: "bg-gradient-to-r from-blue-600 to-blue-400" },
-          { icon: <FaInstagram className="text-pink-400 text-2xl" />, text: "Instagram", subtext: "@tanvir-pr", link: "#", gradient: "bg-gradient-to-r from-pink-500 to-pink-300" },
-          { icon: <FaYoutube className="text-red-500 text-2xl" />, text: "Youtube", subtext: "@tanvir-pr", link: "#", gradient: "bg-gradient-to-r from-red-600 to-red-400" },
-          { icon: <FaGithub className="text-gray-400 text-2xl" />, text: "Github", subtext: "@tanvir-pr", link: "#", gradient: "bg-gradient-to-r from-black to-gray-700" },
-          { icon: <FaTiktok className="text-white text-2xl" />, text: "Tiktok", subtext: "@tanvir-pr", link: "#", gradient: "bg-gradient-to-r from-gray-700 to-gray-500" },
-        ].map((item, index) => (
-          <motion.a
-            key={index}
-            href={item.link}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center relative p-4 rounded-xl transition group overflow-hidden"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="surface-card p-6 md:p-8 text-left"
           >
-            {/* Default Gray Background */}
-            <div className="absolute inset-0 bg-gray-700 rounded-xl transition-all duration-500" />
+            <h3 className={`text-xl font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+              Send a message
+            </h3>
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <AnimatedInput
+                type="text"
+                name="name"
+                placeholder="Your name"
+                value={formData.name}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                error={errors.name}
+                touched={touched.name}
+                theme={theme}
+                shakeKey={submitAttempts}
+              />
+              <AnimatedInput
+                type="email"
+                name="email"
+                placeholder="Your email"
+                value={formData.email}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                error={errors.email}
+                touched={touched.email}
+                theme={theme}
+                shakeKey={submitAttempts}
+              />
+              <AnimatedInput
+                as="textarea"
+                name="message"
+                placeholder="Your message (min 10 characters)"
+                value={formData.message}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                error={errors.message}
+                touched={touched.message}
+                theme={theme}
+                rows={5}
+                shakeKey={submitAttempts}
+              />
 
-            {/* Shimmer Effect */}
-            <div 
-              className={`absolute inset-0 ${item.gradient} bg-[length:200%_200%] transition-all duration-500 translate-x-[-100%] group-hover:translate-x-0`}
-            />
+              {apiError && <p className="text-sm text-red-400">{apiError}</p>}
 
-            {/* Content */}
-            <div className="relative z-10 flex items-center w-full">
-              <div className="p-3 bg-white/10 rounded-lg">{item.icon}</div>
-              <div className="ml-3 text-white">
-                <p className="font-semibold">{item.text}</p>
-                <p className="text-gray-400 text-sm">{item.subtext}</p>
-              </div>
-            </div>
-          </motion.a>
-        ))}
+              <motion.button
+                type="submit"
+                disabled={submitStatus === "submitting"}
+                whileHover={isFormValid && submitStatus === "idle" ? { scale: 1.01 } : {}}
+                whileTap={submitStatus === "idle" ? { scale: 0.98 } : {}}
+                className={`w-full py-3.5 rounded-xl font-semibold text-white ${
+                  submitStatus === "success"
+                    ? "bg-emerald-600"
+                    : "bg-[var(--accent-color)]"
+                } ${!isFormValid && submitStatus === "idle" ? "opacity-70" : ""}`}
+              >
+                {submitStatus === "submitting"
+                  ? "Sending..."
+                  : submitStatus === "success"
+                    ? "Message sent"
+                    : "Send message"}
+              </motion.button>
+              {submitStatus === "success" && (
+                <SuccessResetEffect onReset={() => setSubmitStatus("idle")} />
+              )}
+            </form>
+          </motion.div>
+        </div>
       </div>
-    </motion.div>
-
-
-
-        
-
-
-
-
-
-        </motion.div>
-        
-
-        {/* Right Side - Comments Section */}
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-[#16132a] p-6 rounded-2xl shadow-lg"
-        >
-          <h3 className="text-2xl font-semibold">💬 Comments <span className="text-purple-400">(13)</span></h3>
-          <form className="mt-4 space-y-4">
-            <input type="text" placeholder="Enter your name" className="w-full p-3 rounded-lg bg-[#0d0b1a] text-white border border-gray-600 focus:border-purple-400" />
-            <textarea placeholder="Write your message here..." className="w-full p-3 h-24 rounded-lg bg-[#0d0b1a] text-white border border-gray-600 focus:border-purple-400"></textarea>
-            <label className="block">
-              <input type="file" className="hidden" />
-              <div className="border border-gray-600 p-4 rounded-lg text-center text-gray-400 cursor-pointer hover:border-purple-400">
-                📁 Choose Profile Photo (Max 5MB)
-              </div>
-            </label>
-            <button className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 py-3 rounded-lg text-white font-semibold hover:opacity-80 transition">
-              🚀 Post Comment
-            </button>
-          </form>
-
-          {/* Sample Comments */}
-          <div className="mt-6 space-y-4">
-            <div className="bg-[#0d0b1a] p-4 rounded-lg text-gray-300">
-              <p className="font-bold text-purple-400">🔥 John Doe</p>
-              <p>Awesome design! Love the UI.</p>
-              <span className="text-gray-500 text-sm">12h ago</span>
-            </div>
-            <div className="bg-[#0d0b1a] p-4 rounded-lg text-gray-300">
-              <p className="font-bold text-purple-400">🎉 Alex Smith</p>
-              <p>Dark mode looks amazing! 😍</p>
-              <span className="text-gray-500 text-sm">7h ago</span>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
+    </section>
   );
 };
 
