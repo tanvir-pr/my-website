@@ -16,20 +16,56 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 const app = express();
 const PORT = Number(process.env.PORT || 4000);
 const OWNER_PASSWORD = process.env.OWNER_ANALYTICS_PASSWORD || "123";
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+const CLIENT_ORIGINS = [
+  ...(process.env.CLIENT_ORIGIN || "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://tanvirpr.vercel.app",
+  "https://my-website-dusky-delta.vercel.app",
+];
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12; // 12 hours
-const UPLOADS_DIR = path.resolve(__dirname, "../uploads");
+const UPLOADS_DIR = process.env.VERCEL
+  ? path.join("/tmp", "portfolio-uploads")
+  : path.resolve(__dirname, "../uploads");
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 app.use(
   cors({
-    origin: [CLIENT_ORIGIN, "http://localhost:5173", "http://localhost:5174"],
+    origin: (origin, callback) => {
+      if (!origin || CLIENT_ORIGINS.includes(origin) || /\.vercel\.app$/i.test(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
     credentials: true,
     allowedHeaders: ["Content-Type", "x-owner-token"],
   })
 );
 app.use(express.json({ limit: "2mb" }));
 app.use("/uploads", express.static(UPLOADS_DIR));
+
+let dbReady = null;
+export const ensureDatabase = () => {
+  if (!dbReady) {
+    dbReady = initializeDatabase().catch((error) => {
+      dbReady = null;
+      throw error;
+    });
+  }
+  return dbReady;
+};
+
+app.use(async (_req, _res, next) => {
+  try {
+    await ensureDatabase();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -808,9 +844,11 @@ app.delete("/api/owner/certificates/:id", async (req, res) => {
   }
 });
 
+export default app;
+
 async function start() {
   try {
-    await initializeDatabase();
+    await ensureDatabase();
     app.listen(PORT, () => {
       console.log(`API running on http://localhost:${PORT}`);
     });
@@ -820,4 +858,6 @@ async function start() {
   }
 }
 
-start();
+if (!process.env.VERCEL) {
+  start();
+}

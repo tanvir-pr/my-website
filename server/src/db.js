@@ -13,6 +13,14 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing. Add it to server/.env");
 }
 
+const connectionString = process.env.DATABASE_URL;
+const needsSsl =
+  /sslmode=require/i.test(connectionString) ||
+  /\.neon\.tech/i.test(connectionString) ||
+  process.env.PGSSL === "true";
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
+  ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+  max: process.env.VERCEL ? 2 : 10,
 });
